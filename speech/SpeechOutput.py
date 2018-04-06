@@ -62,7 +62,7 @@ class SpeechOutput():
 			time.sleep(0.1);
 
 	def Speak(self, content, wait=True):
-		print("SPEAK: ", content);
+		self.WaitWhileSpeaking(); # Do not speak into previous sentences
 		espeak_process = subprocess.Popen(["espeak", self._voice, "-s140", content, "--stdout"], stdout=subprocess.PIPE) 
 		self._aplay_process = subprocess.Popen(["aplay", "-D", self._soundcard], stdin=espeak_process.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		if (wait==True):
@@ -73,7 +73,6 @@ class SpeechOutput():
 			self._released = True;
 			print("speech releasing")
 
-			
 	def __del__(self):
 		self.Release()
 			
