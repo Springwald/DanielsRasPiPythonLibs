@@ -33,7 +33,7 @@
 from __future__ import division
 import time, sys, os
 
-import time
+import time, random
 from neopixel import *
 from RgbLeds import RgbLeds
 
@@ -47,10 +47,21 @@ class McRoboFace():
 	_released			= False
 
 	# Define various facial expressions
-	smileData   = [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-	frownData   = [1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1]
-	grimaceData = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
-	oooohData   = [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1]
+	smileData		= [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+	frownData		= [1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1]
+	grimaceData		= [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+	oooohData		= [0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1]
+	
+	neutral			= [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1]
+	blink			= [0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0]
+	
+	speak1			= [0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+	speak2			= [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+	speak3			= [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+	speak4			= [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1]
+	speak5			= [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1]
+	speaking		= [speak1, speak3, speak4, speak5]
+	_actualSpeak	= 0;
 	
 	def __init__(self, rgbLeds, startLed=0):
 	# startLed: LEDs before the McRoboFace
@@ -62,10 +73,24 @@ class McRoboFace():
 			self._rgbLeds._pixels.setPixelColor(i, 0)
 			self._rgbLeds._pixels.show()   
 
-	def showFace (self, data, Red, Green, Blue):
+	def Speak(self, red=255, green=255, blue=255):
+		last = self._actualSpeak
+		while (last==self._actualSpeak):
+			self._actualSpeak = random.randrange(len(self.speaking));
+		self.showFace(self.speaking[self._actualSpeak], red, green, blue);
+		
+	def NeutralAndBlink(self, red=255, green=255, blue=255):
+		rnd = random.randrange(50);
+		if (rnd ==1):
+			self.showFace(self.blink, red, green, blue);
+		else:
+			self.showFace(self.neutral, red, green, blue);
+		
+	def showFace (self, data, red=255, green=255, blue=255):
 		for i in range(0, len(data)):
-			if (data[i] > 0):
-				self._rgbLeds._pixels.setPixelColor(self._startLed + i, Color(Green, Red, Blue))
+			value = data[i]
+			if (value > 0):
+				self._rgbLeds._pixels.setPixelColor(self._startLed + i, Color(int(green*value), int(red*value), int(blue*value)))
 			else:
 				self._rgbLeds._pixels.setPixelColor(self._startLed + i, 0)
 		self._rgbLeds._pixels.show()           
@@ -98,7 +123,12 @@ class McRoboFace():
 if __name__ == "__main__":
 	leds = RgbLeds(ledCount=29, ledBrightness=100);
 	face = McRoboFace(leds);
-	face.Demo();
+	face.showFace(face.speak2);
+	#time.sleep(2);
+	#face.Demo();
+	for i in range(1,100):
+		face.Speak();
+		time.sleep(0.2);
 	face.Release()
 
 
