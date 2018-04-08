@@ -38,7 +38,9 @@ class StepperMotorControlSynchron():
 	___targetPos			= 0
 	calibrating				= False
 	actualPos				= 0 
+	_actualPosAfterStep		= 0
 	actualStepDataPos		= 0
+	
 	lastStepDataPos			= 0
 	lastStepDataPosChange	= 0
 	
@@ -54,24 +56,28 @@ class StepperMotorControlSynchron():
 	_rampSafeArea				= 50         # prevent to come nearer than this to the endstop
 	_rampDistance				= 0        # how many steps before the target pos start to ramp down (calculated automatically)
 
+	_autoStandBy 				= False;
+	_targetOnlyEvenSteps		= True;		# only target steps like 0,2,4 where single bits are stores to minimize power usage
 
 	_stepData						= []  #	 the stepper motor step bits
 	
 	_motor						= None
-	_motorPowerOn				= 100
-	_motorPowerStandBy			= 0
+	_motorPowerOn				= 100		# 0 - 100
+	_motorPowerStandBy			= 0			# 0 -100
 	_motorPowerOff				= 0
 	_motorIsStandBy				= True
 
-	_releasedMotor					= False
+	_releasedMotor				= False
 	_released					= False
 
-	def __init__(self, name, address, maxSteps, i2cIoExpanderPcf8574, i2cIoExpanderPcf8574Bit, stepData, rampSafeArea = 50):
+	def __init__(self, name, address, maxSteps, i2cIoExpanderPcf8574, i2cIoExpanderPcf8574Bit, stepData, autoStandBy=False, targetOnlyEvenSteps=True, rampSafeArea = 50):
 		self._maxSteps = maxSteps;
 		self._motorName = name;
 		self._i2cIoExpanderPcf8574 = i2cIoExpanderPcf8574;
 		self._endStopBit = i2cIoExpanderPcf8574Bit;
 		self._stepData = stepData;
+		self._autoStandBy = autoStandBy;
+		self._targetOnlyEvenSteps = targetOnlyEvenSteps;
 		self._rampSafeArea = rampSafeArea;
 		self.actualPos = 0
 		self.targetPos = 0
@@ -87,6 +93,8 @@ class StepperMotorControlSynchron():
 	@targetPos.setter
 	def targetPos(self, targetPos):
 		#print (self.__targetPosKey)
+		if (self._targetOnlyEvenSteps==True):
+			targetPos = 2 * int(targetPos / 2);
 		targetPos = int(min(self._maxSteps - self._rampSafeArea, targetPos))
 		targetPos = int(max(self._rampSafeArea, targetPos))
 		self.___targetPos = targetPos
@@ -112,21 +120,29 @@ class StepperMotorControlSynchron():
 		
 		actualStepDataPos = self.actualStepDataPos
 		if (self.lastStepDataPos != actualStepDataPos): # stepper has to move
-			if (self._motorIsStandBy == True):
-				self._motorIsStandBy = False
-				time.sleep(0.1)
-				self._motor.MotorSpeedSetAB(self._motorPowerOn,self._motorPowerOn)
+			self.EndStandBy();
 			self._motor.MotorDirectionSet(self._stepData[actualStepDataPos])
-			self.lastStepDataPos = actualStepDataPos
 			self.lastStepDataPosChange = time.time()
+			self.lastStepDataPos = actualStepDataPos
+			self.actualPos = self._actualPosAfterStep;
+			if (self.actualPos == self.targetPos):
+				print (self.actualStepDataPos);
 			time.sleep(self._actualSpeedDelay);
-			#print(self._actualSpeedDelay);
 		else:
-			if (time.time() > self.lastStepDataPosChange + 3): # stepper has not moved in the last moments
-				if (self._motorIsStandBy == False):
-					self._motorIsStandBy = True
-					self._motor.MotorSpeedSetAB(self._motorPowerStandBy,self._motorPowerStandBy) # last stepper move is long time ago
-					#print("off")
+			if (self._autoStandBy==True and time.time() > self.lastStepDataPosChange + 3): # stepper has not moved in the last moments
+				self.StandBy();
+
+	def StandBy(self):
+		if (self._motorIsStandBy == False):
+			self._motorIsStandBy = True
+			self._motor.MotorSpeedSetAB(self._motorPowerStandBy,self._motorPowerStandBy) # last stepper move is long time ago
+			time.sleep(0.1)
+
+	def EndStandBy(self):
+		if (self._motorIsStandBy == True):
+			self._motorIsStandBy = False
+			self._motor.MotorSpeedSetAB(self._motorPowerOn,self._motorPowerOn)
+			time.sleep(0.1)
 
 	def Update(self):
 		if (self.calibrating == True): 
@@ -168,19 +184,19 @@ class StepperMotorControlSynchron():
 		#print ("_stepBackwards motor " + self._motorName )
 		actualStepDataPos = self.actualStepDataPos
 		actualStepDataPos += 1
-		if actualStepDataPos > len(self._stepData)-1:
+		if actualStepDataPos == len(self._stepData):
 			actualStepDataPos = 0
 		self.actualStepDataPos = actualStepDataPos
-		self.actualPos = self.actualPos - 1
+		self._actualPosAfterStep = self.actualPos - 1
         
 	def _stepForward(self):
 		#print ("_stepBackwards motor " + self._motorName )
 		actualStepDataPos = self.actualStepDataPos
 		actualStepDataPos -= 1
-		if actualStepDataPos < 0:
+		if actualStepDataPos == -1:
 			actualStepDataPos = len(self._stepData)-1
 		self.actualStepDataPos = actualStepDataPos
-		self.actualPos =  self.actualPos + 1
+		self._actualPosAfterStep =  self.actualPos + 1
 
 	def calibrateHome(self):
 		self.calibrating = True
@@ -198,12 +214,14 @@ class StepperMotorControlSynchron():
 		while self._endStop() == False: # forward till on endstop
 			self._stepBackwards();
 			self._updateMotorSteps()
-
-		self.actualPos =0
-
+			
 		print ("calibrating motor " + self._motorName  + ": move out of safe area")
 		for i in range(1, int(self._rampSafeArea)): # move out of safe area
 			self._stepForward()
+			self._updateMotorSteps()
+			
+		if (self._targetOnlyEvenSteps==True and self.actualStepDataPos % 2 != 0):
+			self._stepBackwards();
 			self._updateMotorSteps()
 			
 		self.actualPos =0
@@ -234,10 +252,9 @@ class StepperMotorControlSynchron():
     
 
 if __name__ == "__main__":
-	time.sleep(2);
 	
 	endStop = I2cIoExpanderPcf8574Synchron(0x3e, useAsInputs=True)
-	motor = StepperMotorControlSynchron("y-axis", 0x0e, 3800,  endStop, 128, [0b1001, 0b1000, 0b1010, 0b0010, 0b0110, 0b0100, 0b0101, 0b0001])
+	motor = StepperMotorControlSynchron("y-axis", 0x0e, 3800,  endStop, 128, [0b1000, 0b1010, 0b0010, 0b0110, 0b0100, 0b0101, 0b0001,0b1001], autoStandBy=False, targetOnlyEvenSteps=False)
 			
 	sleeper = 0.0002;
 
@@ -255,19 +272,18 @@ if __name__ == "__main__":
 			motor._updateMotorSteps();
 			time.sleep(sleeper);
 	
-	
-	
+
 	if (True):
 		test = 2;
 		for i in range(1,test):
 			motor.targetPos = motor._maxSteps 
-			print(motor.targetPos);
+			#print(motor.targetPos);
 			while motor.targetReached == False:
 				motor.Update();
 				time.sleep(motor._actualSpeedDelay);
 				
 			motor.targetPos =motor._maxSteps * 0
-			print(motor.targetPos);
+			#print(motor.targetPos);
 			while motor.targetReached == False:
 				motor.Update();
 				time.sleep(motor._actualSpeedDelay);
