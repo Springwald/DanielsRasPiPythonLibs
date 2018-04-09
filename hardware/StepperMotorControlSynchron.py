@@ -47,7 +47,7 @@ class StepperMotorControlSynchron():
 	_i2cIoExpanderPcf8574		= None      # the I2cIoExpanderPcf8574 the endstop is connected to
 	_endStopBit					= 0       # the bit of the I2cIoExpanderPcf8574 to read the motor endstop
 
-	_fastestSpeedDelay			= 0.00005     # how fast can the stepper motor go
+	_fastestSpeedDelay			= 0.00003     # how fast can the stepper motor go
 	_slowestSpeedDelay			= _fastestSpeedDelay * 20
 	_calibrateSpeedDelay		= _fastestSpeedDelay * 20
 	_actualSpeedDelay			= _slowestSpeedDelay
@@ -125,8 +125,6 @@ class StepperMotorControlSynchron():
 			self.lastStepDataPosChange = time.time()
 			self.lastStepDataPos = actualStepDataPos
 			self.actualPos = self._actualPosAfterStep;
-			if (self.actualPos == self.targetPos):
-				print (self.actualStepDataPos);
 			time.sleep(self._actualSpeedDelay);
 		else:
 			if (self._autoStandBy==True and time.time() > self.lastStepDataPosChange + 3): # stepper has not moved in the last moments
