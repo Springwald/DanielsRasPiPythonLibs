@@ -47,7 +47,7 @@ class SpeechOutput():
 		# soundCard: "plughw:1" for Soundcard 1; "sysdefault" for standard soundcard
 		# voice: "-vde" for german robotic; "-vmb-de2", for german male
 		self._soundcard = soundcard;
-		self._voice = voice;
+		self._voice = voice
 		print("speech init")
 		
 	def IsSpeaking(self):
@@ -64,6 +64,7 @@ class SpeechOutput():
 	def Speak(self, content, wait=True):
 		self.WaitWhileSpeaking(); # Do not speak into previous sentences
 		espeak_process = subprocess.Popen(["espeak", self._voice, "-s140", content, "--stdout"], stdout=subprocess.PIPE) 
+		#espeak_process = subprocess.Popen(["espeak", "-s140", content, "--stdout"], stdout=subprocess.PIPE) 
 		self._aplay_process = subprocess.Popen(["aplay", "-D", self._soundcard], stdin=espeak_process.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		if (wait==True):
 			self.WaitWhileSpeaking();
@@ -86,7 +87,8 @@ if __name__ == "__main__":
 		
 	pygame.init()
 	
-	speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de2"); 
+	#speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de2"); 
+	speechOut = SpeechOutput(soundcard="plughw:1", voice="-ven"); 
 	
 	atexit.register(exit_handler)
 	
