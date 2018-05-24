@@ -87,18 +87,18 @@ if __name__ == "__main__":
 		
 	pygame.init()
 	
-	#speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de2"); 
-	speechOut = SpeechOutput(soundcard="plughw:1", voice="-ven"); 
+	speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de2"); 
+	#speechOut = SpeechOutput(soundcard="plughw:1", voice="-ven"); 
 	
 	atexit.register(exit_handler)
 	
 	#speechOut.Speak2("Hallo")
 	
-	speechOut.Speak("Hallo", wait=False)
-	time.sleep(3);
-	speechOut.Speak("Möchtest Du eine Partie go mit mir spielen?", wait=True);
-	speechOut.Speak("Ich habe eine Spielstärke von etwa 5 kyu.", wait=True)
-	speechOut.Speak("Hui")
+	speechOut.Speak("Hallo", wait=True)
+	#time.sleep(3);
+	speechOut.Speak("Mein Name ist Roobert.", wait=True);
+	#speechOut.Speak("Ich habe eine Spielstärke von etwa 5 kyu.", wait=True)
+	#speechOut.Speak("Hui")
 	
 	#start_new_thread(speechOut.UpdateEndless(),())
 	

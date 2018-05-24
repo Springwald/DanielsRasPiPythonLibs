@@ -6,7 +6,7 @@ import time,sys,os
 my_file = os.path.abspath(__file__)
 my_path ='/'.join(my_file.split('/')[0:-1])
 sys.path.insert(0, my_path)
-sys.path.insert(0,my_path + "/../libs" )
+sys.path.insert(0,my_path + "/../multitasking" )
 
 from PCF8574 import PCF8574
 from MultiProcessing import *
