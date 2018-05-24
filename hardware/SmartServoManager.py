@@ -1,14 +1,5 @@
 #!/usr/bin/env python
 
-#      Roobert V2 - second version of home robot project
-#      ________            ______             _____ 
-#      ___  __ \______________  /_______________  /_
-#      __  /_/ /  __ \  __ \_  __ \  _ \_  ___/  __/
-#      _  _, _// /_/ / /_/ /  /_/ /  __/  /   / /_  
-#      /_/ |_| \____/\____//_.___/\___//_/    \__/
-#
-#     Project website: http://roobert.springwald.de
-#
 #     ##############################
 #     # LX-16A servo communication #
 #     ##############################
@@ -44,7 +35,7 @@ import atexit
 my_file = os.path.abspath(__file__)
 my_path ='/'.join(my_file.split('/')[0:-1])
 
-sys.path.insert(0,my_path + "/../libs" )
+sys.path.insert(0,my_path + "/../multitasking/" )
 
 from MultiProcessing import *
 from array import array
@@ -222,7 +213,7 @@ class SmartServoManager(MultiProcessing):
 			print("super().EndUpdating() " + self._processName)
 			time.sleep(self._actualSpeedDelay*10); 
 			self._servos.ShutDown(self._servoIds);
-			self. _servos.Release();
+			self._servos.Release();
 
 	def __del__(self):
 		self.Release()
@@ -264,7 +255,7 @@ def bigTest():
 		tester.MoveToAndWait(strechSide + lookRightHand);
 		time.sleep(2);
 	
-		for wink in range(0,2):
+		for wink in range(0,1):
 			tester.MoveToAndWait(wink1);
 			tester.MoveToAndWait(wink2);
 

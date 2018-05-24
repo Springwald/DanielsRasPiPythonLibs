@@ -1,14 +1,5 @@
 #!/usr/bin/env python
 
-#      Roobert V2 - second version of home robot project
-#      ________            ______             _____ 
-#      ___  __ \______________  /_______________  /_
-#      __  /_/ /  __ \  __ \_  __ \  _ \_  ___/  __/
-#      _  _, _// /_/ / /_/ /  /_/ /  __/  /   / /_  
-#      /_/ |_| \____/\____//_.___/\___//_/    \__/
-#
-#     Project website: http://roobert.springwald.de
-#
 #     ##############################
 #     # LX-16A servo communication #
 #     ##############################
@@ -225,7 +216,6 @@ class LX16AServos():
 	def Release(self):
 		if (self._released == False):
 			print("releasing servos")
-			self.ShutDown();
 			self.SerialPort.close();
 			
 	def __del__(self):
