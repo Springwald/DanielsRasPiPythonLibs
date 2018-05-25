@@ -47,38 +47,31 @@ class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
 	_actualSpeedDelay = .006
-	_maxStepsPerSpeedDelay = 1
-	
-	_ramp				= 10;
-	
-	_servos 			= None;
+
 	servoCount 			= 0;
-	_servoIds			= [];
-	__targets			= None; 
-	__values			= None; 
+	_servos 			= None;
+	
+	_servoIds					= [];
+	_servoMaxStepsPerUpdate		= [];
+	_servoRamp					= [];
+	
+	__targets					= None; 
+	__values					= None; 
 	
 	__shared_ints__		= None
 	
 	_nextServoToReadPos = 0;
 	
 	_released = False;
-	
-	@property
-	def allTargetsReached(self):
-		return self.__shared_ints__.get_value(self.__targets_reached_int__)== 1
-	@allTargetsReached.setter
-	def allTargetsReached(self, value):
-		if (value == True):
-			self.__shared_ints__.set_value(self.__targets_reached_int__,1)
-		else:
-			self.__shared_ints__.set_value(self.__targets_reached_int__,0)
 
 	def __init__(self, lX16AServos, servoIds, ramp=0, maxSpeed=1):
 		
 		super().__init__(prio=-20)
 		
-		self.servoCount = len(servoIds);
-		self._servoIds = servoIds;
+		self.servoCount 				= len(servoIds);
+		self._servoIds 					= servoIds;
+		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=self.servoCount);
+		self._servoRamp 				= SharedInts(max_length=self.servoCount);
 		self._servos = lX16AServos;
 		self.__targets = SharedInts(max_length=self.servoCount);
 		self.__values  = SharedInts(max_length=self.servoCount);
@@ -94,14 +87,29 @@ class SmartServoManager(MultiProcessing):
 		# initial read of servo positions
 		for pos in range(0, self.servoCount):
 			id = self._servoIds[pos];
+			self._servoMaxStepsPerUpdate.set_value(pos,maxSpeed);
+			self._servoRamp.set_value(pos,ramp);
 			value = self._servos.ReadPos(id);
 			self.__values.set_value(pos, value);
 			self.__targets.set_value(pos, value);
 			#print(self.__values.get_value(pos));
 			
 		super().StartUpdating()
-		
-		
+
+	@property
+	def allTargetsReached(self):
+		return self.__shared_ints__.get_value(self.__targets_reached_int__)== 1
+	@allTargetsReached.setter
+	def allTargetsReached(self, value):
+		if (value == True):
+			self.__shared_ints__.set_value(self.__targets_reached_int__,1)
+		else:
+			self.__shared_ints__.set_value(self.__targets_reached_int__,0)
+			
+	def SetMaxStepsPerUpdate(self, servoId, maxSteps):
+		no = self.__getNumberForId(servoId);
+		self._servoMaxStepsPerUpdate.set_value(no, maxSteps);
+
 	def Update(self):
 		#print("update start " + str(time.time()))
 		if (super().updating_ended == True):
@@ -143,14 +151,16 @@ class SmartServoManager(MultiProcessing):
 			else:
 				reachedThis = False;
 				
-			diff = max(diff, -self._maxStepsPerSpeedDelay);
-			diff = min(diff, self._maxStepsPerSpeedDelay);
-
+			servoMaxStepsPerUpdate = self._servoMaxStepsPerUpdate.get_value(i);
+				
+			diff = max(diff, -servoMaxStepsPerUpdate);
+			diff = min(diff, servoMaxStepsPerUpdate);
+			
 			if (reachedThis == False):
 				allReached = False
 				newValue = int(value + diff) 
 				if (super().updating_ended == False):
-					self._servos.MoveServo(id, self._ramp, newValue);
+					self._servos.MoveServo(id, self._servoRamp.get_value(i), newValue);
 					self.__values.set_value(i, newValue)
 
 		self._nextServoToReadPos = self._nextServoToReadPos + 1
@@ -225,6 +235,15 @@ def bigTest():
 	ended = False;
 	servos = LX16AServos();
 	tester = SmartServoManager(lX16AServos=servos, servoIds= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],ramp=0, maxSpeed=1);
+	tester.SetMaxStepsPerUpdate(3,2);
+	tester.SetMaxStepsPerUpdate(4,2);
+	tester.SetMaxStepsPerUpdate(5,2);
+	tester.SetMaxStepsPerUpdate(6,3);
+	tester.SetMaxStepsPerUpdate(9,2);
+	tester.SetMaxStepsPerUpdate(10,2);
+	tester.SetMaxStepsPerUpdate(11,2);
+	tester.SetMaxStepsPerUpdate(12,3);
+
 
 	armHanging 		= [[1,151],[2,168],[3,455],[4,613],[5,471],[6,550]];
 	wink1 			= [[1,374],[2,451],[3,693],[4,816],[5,565]];
@@ -249,11 +268,14 @@ def bigTest():
 		tester.MoveToAndWait(lookFront + armHanging);
 		time.sleep(1);
 	
-		tester.MoveToAndWait(closeHand);
 		tester.MoveToAndWait(openHand);
+		tester.MoveToAndWait(closeHand);
+		
 
 		tester.MoveToAndWait(strechSide + lookRightHand);
+		tester.MoveToAndWait(openHand);
 		time.sleep(2);
+		
 	
 		for wink in range(0,1):
 			tester.MoveToAndWait(wink1);
