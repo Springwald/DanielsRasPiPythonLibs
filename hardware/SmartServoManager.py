@@ -52,6 +52,9 @@ class SmartServoManager(MultiProcessing):
 	_servos 			= None;
 	
 	_servoIds					= [];
+	_masterIds					= [];
+	_reverseToMaster				= [];
+	_centeredValues				= [];
 	_servoMaxStepsPerUpdate		= [];
 	_servoRamp					= [];
 	
@@ -70,11 +73,21 @@ class SmartServoManager(MultiProcessing):
 		
 		self.servoCount 				= len(servoIds);
 		self._servoIds 					= servoIds;
+		
+		# fill other arrays
+		self._masterIds					= [];
+		self._centeredValues			= [];
+		self._reverseToMaster			= [];
+		for i in range(self.servoCount):
+			self._masterIds.append(servoIds[i]);
+			self._centeredValues.append(500);		# standard value: 500
+			self._reverseToMaster.append(1);		# standard: 1 = not reverse (-1 would be reverse)
+			
 		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=self.servoCount);
 		self._servoRamp 				= SharedInts(max_length=self.servoCount);
-		self._servos = lX16AServos;
-		self.__targets = SharedInts(max_length=self.servoCount);
-		self.__values  = SharedInts(max_length=self.servoCount);
+		self._servos 					= lX16AServos;
+		self.__targets					= SharedInts(max_length=self.servoCount);
+		self.__values					= SharedInts(max_length=self.servoCount);
 		
 		self._ramp = ramp;
 		self._maxStepsPerSpeedDelay = maxSpeed;
@@ -83,18 +96,6 @@ class SmartServoManager(MultiProcessing):
 		self.__targets_reached_int__	= self.__shared_ints__.get_next_key()
 		
 		self._processName = "SmartServoManager";
-		
-		# initial read of servo positions
-		for pos in range(0, self.servoCount):
-			id = self._servoIds[pos];
-			self._servoMaxStepsPerUpdate.set_value(pos,maxSpeed);
-			self._servoRamp.set_value(pos,ramp);
-			value = self._servos.ReadPos(id);
-			self.__values.set_value(pos, value);
-			self.__targets.set_value(pos, value);
-			#print(self.__values.get_value(pos));
-			
-		super().StartUpdating()
 
 	@property
 	def allTargetsReached(self):
@@ -106,6 +107,27 @@ class SmartServoManager(MultiProcessing):
 		else:
 			self.__shared_ints__.set_value(self.__targets_reached_int__,0)
 			
+	def Start(self):
+		# initial read of servo positions
+		for pos in range(0, self.servoCount):
+			id = self._servoIds[pos];
+			self._servoMaxStepsPerUpdate.set_value(pos,self._maxStepsPerSpeedDelay);
+			self._servoRamp.set_value(pos,self._ramp);
+			value = self._servos.ReadPos(id);
+			self.__values.set_value(pos, value);
+			self.__targets.set_value(pos, value);
+			#print(self.__values.get_value(pos));
+		super().StartUpdating()
+		
+	def SetMasterId(self, servoId, masterServoId, reverseToMaster):
+		no = self.__getNumberForId(servoId);
+		self._masterIds[no]= masterServoId;
+		self._reverseToMaster[no]= reverseToMaster;
+		
+	def SetCenteredValue(self, servoId, centeredValue):
+		no = self.__getNumberForId(servoId);
+		self._centeredValues[no]= centeredValue;
+
 	def SetMaxStepsPerUpdate(self, servoId, maxSteps):
 		no = self.__getNumberForId(servoId);
 		self._servoMaxStepsPerUpdate.set_value(no, maxSteps);
@@ -235,14 +257,8 @@ def bigTest():
 	ended = False;
 	servos = LX16AServos();
 	tester = SmartServoManager(lX16AServos=servos, servoIds= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],ramp=0, maxSpeed=1);
-	tester.SetMaxStepsPerUpdate(3,2);
-	tester.SetMaxStepsPerUpdate(4,2);
 	tester.SetMaxStepsPerUpdate(5,2);
 	tester.SetMaxStepsPerUpdate(6,3);
-	tester.SetMaxStepsPerUpdate(9,2);
-	tester.SetMaxStepsPerUpdate(10,2);
-	tester.SetMaxStepsPerUpdate(11,2);
-	tester.SetMaxStepsPerUpdate(12,3);
 
 
 	armHanging 		= [[1,151],[2,168],[3,455],[4,613],[5,471],[6,550]];
@@ -303,22 +319,23 @@ def bigTest():
 def SingleTest():
 	ended = False;
 	servos = LX16AServos();
-	tester = SmartServoManager(lX16AServos=servos, servoIds= [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],ramp=0, maxSpeed=1);
+	tester = SmartServoManager(lX16AServos=servos, servoIds= [5,6],ramp=0, maxSpeed=1);
+
+	tester.SetMasterId(servoId=6, masterServoId=5, reverseToMaster=1);
+	tester.Start();
 
 	plus = 100;
 
 	while(True):
 		
 		plus = - plus;
-		
-		tester.MoveServo(13,500+plus);
-		tester.MoveServo(14,500-plus);
-		tester.MoveServo(15,500+plus);
+		tester.MoveServo(5,500+plus);
+		# tester.MoveServo(6,500-plus);
 		while (tester.allTargetsReached == False):
 			time.sleep(0.1);
 
 
 
 if __name__ == "__main__":
-	#SingleTest();
-	bigTest();
+	SingleTest();
+	#bigTest();

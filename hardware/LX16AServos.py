@@ -233,25 +233,34 @@ if __name__ == "__main__":
 		
 	r = 0;
 	
+	
 	while (False):
-		clear();
-		print(r);
-		for a in range(1, 12):
+		out = ""
+		
+		#print(r);
+		for a in range(1, 9):
 			p = servos.ReadPos(a);
-			#print(str(a) + ": " + str(p))
+			out = out  + str(a) + ": " + str(p) + "\r\n";
 		r = r + 1
+		clear();
+		print(out);
 		
 #		print(str(servos.ReadTemperature(5))+"°C")
 #		print(str(servos.ReadVolt(5))+" mVolt")
 #		print(str(servos.ReadPos(5))+" pos")
 		#sleep(0.5);
 	
-	
-	plus = 0;
-
-	servos.MoveServo(id=14,speed=0,position=500+plus);
-	servos.MoveServo(id=13,speed=0,position=500-plus);
-	sleep(1);
+	while(True):
+		for p in range(-200, 200):
+			plus = p * 2;
+			servos.MoveServo(id=5,speed=0,position=500+plus);
+			servos.MoveServo(id=6,speed=0,position=500-plus);
+			sleep(0.005);
+		for p in range(200, -200, -1):
+			plus = p * 2;
+			servos.MoveServo(id=5,speed=0,position=500+plus);
+			servos.MoveServo(id=6,speed=0,position=500-plus);
+			sleep(0.005);
 	
 	#for no in range(0, 100):
 		#print(str(servos.ReadPos(1)) + "pos " + str(no));
