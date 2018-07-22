@@ -138,7 +138,7 @@ class LX16AServos():
 		return -1;
 
 
-	def ReadVolt(self, id):
+	def ReadVolt(self, id, showError=True):
 
 		if (self._shutingDown == True):
 			return False
@@ -167,7 +167,9 @@ class LX16AServos():
 						value=self.SerialPort.read(1)
 			retry+=1
 			sleep(0.1)
-		print("Servo " + str(id) + " not responding!");
+		
+		if (showError == True):
+			print("Servo " + str(id) + " not responding!");
 		return -1;
 		
 	def ShutDown(self, ids):
@@ -175,7 +177,7 @@ class LX16AServos():
 		for id in ids:
 			self.SetServoPower(id, False);
 
-	def ReadPos(self, id):
+	def ReadPos(self, id, showError=True):
 		
 		if (self._shutingDown == True):
 			return False
@@ -210,7 +212,8 @@ class LX16AServos():
 							print("Servo " + str(id) + " value loss!");
 			retry+=1
 			sleep(0.00001)
-		print("Servo " + str(id) + " not responding!");
+		if (showError == True):
+			print("Servo " + str(id) + " not responding!");
 		return -1;
 		
 	def Release(self):
@@ -234,13 +237,14 @@ if __name__ == "__main__":
 	r = 0;
 	
 	
-	while (False):
+	while (True):
 		out = ""
 		
 		#print(r);
-		for a in range(1, 9):
-			p = servos.ReadPos(a);
-			out = out  + str(a) + ": " + str(p) + "\r\n";
+		for a in range(1, 30):
+			p = servos.ReadPos(a,showError=False);
+			if (p != -1):
+				out = out  + str(a) + ": " + str(p) + "\r\n";
 		r = r + 1
 		clear();
 		print(out);

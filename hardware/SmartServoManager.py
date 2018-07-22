@@ -53,8 +53,9 @@ class SmartServoManager(MultiProcessing):
 	
 	_servoIds					= [];
 	_masterIds					= [];
-	_reverseToMaster				= [];
+	_reverseToMaster			= [];
 	_centeredValues				= [];
+	_isReadOnly					= [];
 	_servoMaxStepsPerUpdate		= [];
 	_servoRamp					= [];
 	
@@ -81,6 +82,7 @@ class SmartServoManager(MultiProcessing):
 		for i in range(self.servoCount):
 			self._masterIds.append(servoIds[i]);
 			self._centeredValues.append(500);		# standard value: 500
+			self._isReadOnly.append(False);			# standard: False = active Servo (True: Servo is used as input device)
 			self._reverseToMaster.append(1);		# standard: 1 = not reverse (-1 would be reverse)
 			
 		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=self.servoCount);
@@ -127,6 +129,10 @@ class SmartServoManager(MultiProcessing):
 	def SetCenteredValue(self, servoId, centeredValue):
 		no = self.__getNumberForId(servoId);
 		self._centeredValues[no]= centeredValue;
+		
+	def SetReadOnly(self, servoId, isReadOnly):
+		no = self.__getNumberForId(servoId);
+		self._isReadOnly[no]= isReadOnly;
 
 	def SetMaxStepsPerUpdate(self, servoId, maxSteps):
 		no = self.__getNumberForId(servoId);
@@ -147,8 +153,16 @@ class SmartServoManager(MultiProcessing):
 			if (super().updating_ended == True):
 				return
 				
-			id = self._servoIds[i];
+			id = self._servoIds[i]
 			
+			if (self._masterIds[i] !=  id):
+				continue # is a slave servo
+				
+			if (self._isReadOnly[i] == True):
+				value = self._servos.ReadPos(id)
+				self.__values.set_value(i, value);
+				continue # is a readOnly Servo used as input
+
 			if (False and self._nextServoToReadPos == i):
 			#if (id == 13 or id == 12):
 				value = self._servos.ReadPos(id)
@@ -184,6 +198,14 @@ class SmartServoManager(MultiProcessing):
 				if (super().updating_ended == False):
 					self._servos.MoveServo(id, self._servoRamp.get_value(i), newValue);
 					self.__values.set_value(i, newValue)
+					
+					for no in range(0, self.servoCount):
+						if (no != i):
+							if (self._masterIds[no] == id):
+								slaveId = self._servoIds[no]
+								newValue = (newValue - self._centeredValues[i]) * self._reverseToMaster[no] + self._centeredValues[no] 
+								self._servos.MoveServo(slaveId, self._servoRamp.get_value(i), newValue);
+								self.__values.set_value(no, newValue)
 
 		self._nextServoToReadPos = self._nextServoToReadPos + 1
 		if (self._nextServoToReadPos >= self.servoCount):
@@ -207,11 +229,14 @@ class SmartServoManager(MultiProcessing):
 
 		
 	def MoveServo(self, id, pos):
-		no = self.__getNumberForId(id);
-		self.__targets.set_value(no, pos);
+		masterNo = self.__getNumberForId(id)
+		self.__targets.set_value(masterNo, pos);
 		self.allTargetsReached = False;
-
 		
+	def ReadServo(self, id):
+		masterNo = self.__getNumberForId(id)
+		return self.__values.get_value(masterNo);
+
 	def __getNumberForId(self, id):
 		for no in range(0, self.servoCount):
 			if (id == self._servoIds[no]):
@@ -316,26 +341,40 @@ def bigTest():
 	tester.Release();
 	print("done");
 	
-def SingleTest():
+def TestSlave():
 	ended = False;
 	servos = LX16AServos();
 	tester = SmartServoManager(lX16AServos=servos, servoIds= [5,6],ramp=0, maxSpeed=1);
-
-	tester.SetMasterId(servoId=6, masterServoId=5, reverseToMaster=1);
+	
+	tester.SetMasterId(servoId=5, masterServoId=6, reverseToMaster=-1);
+	
 	tester.Start();
 
 	plus = 100;
 
 	while(True):
-		
 		plus = - plus;
-		tester.MoveServo(5,500+plus);
+		tester.MoveServo(6,500+plus);
 		# tester.MoveServo(6,500-plus);
 		while (tester.allTargetsReached == False):
 			time.sleep(0.1);
 
+def TestReadOnly():
+	ended = False;
+	servos = LX16AServos();
+	tester = SmartServoManager(lX16AServos=servos, servoIds= [5,6],ramp=0, maxSpeed=10);
+	
+	tester.SetReadOnly(servoId=5,isReadOnly=True)
+	tester.Start();
+
+	while(True):
+		value = tester.ReadServo(5);
+		tester.MoveServo(6,value);
+		while (tester.allTargetsReached == False):
+			time.sleep(0.001);
 
 
 if __name__ == "__main__":
-	SingleTest();
+	#TestSlave()
+	TestReadOnly()
 	#bigTest();
