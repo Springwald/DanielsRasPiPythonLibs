@@ -66,6 +66,7 @@ class SmartServoManager(MultiProcessing):
 	__shared_ints__		= None
 	
 	_nextServoToReadPos = 0;
+	_started = False;
 	
 	_released = False;
 
@@ -108,31 +109,34 @@ class SmartServoManager(MultiProcessing):
 			value = self._servos.ReadPos(id)
 			self.__values.set_value(pos, value)
 			self.__targets.set_value(pos, value)
-		super().StartUpdating()
+
+		if (self._started==False):
+			self._started=True;
+			super().StartUpdating()
 		
-	def AddMasterServo(self, servoId):
-		self.___addServo(servoId)
+	def AddMasterServo(self, servoId, centeredValue=500):
+		self.___addServo(servoId, centeredValue=centeredValue)
 		self._masterIds.append(servoId)
 
-	def AddSlaveServo(self, servoId, masterServoId, reverseToMaster=1):
-		self.___addServo(servoId)
+	def AddSlaveServo(self, servoId, masterServoId, reverseToMaster=1, centeredValue=500 ):
+		self.___addServo(servoId, centeredValue=centeredValue)
 		self._masterIds.append(masterServoId)
 		self._reverseToMaster[self.servoCount-1] = reverseToMaster
 
-	def ___addServo(self, servoId):
+	def ___addServo(self, servoId, centeredValue):
 		self.servoCount = self.servoCount+1
 		no = self.servoCount-1
 		self._servoIds.append(servoId);
 		self._servoMaxStepsPerUpdate.set_value(no,self._maxStepsPerSpeedDelay); # default value from init
 		self._servoRamp.set_value(no,self._ramp);	# default value from init
-		self._centeredValues.append(500);			# standard value: 500
+		self._centeredValues.append(centeredValue);	# standard value: 500
 		self._isReadOnly.append(False);				# standard: False = active Servo (True: Servo is used as input device)
 		self._reverseToMaster.append(1);			# standard: 1 = not reverse (-1 would be reverse)
 
-	def SetMasterId(self, servoId, masterServoId, reverseToMaster):
-		no = self.__getNumberForId(servoId);
-		self._masterIds[no]= masterServoId;
-		self._reverseToMaster[no]= reverseToMaster;
+	#def SetMasterId(self, servoId, masterServoId, reverseToMaster):
+	#	no = self.__getNumberForId(servoId);
+	#	self._masterIds[no]= masterServoId;
+	#	self._reverseToMaster[no]= reverseToMaster;
 		
 	def SetCenteredValue(self, servoId, centeredValue):
 		no = self.__getNumberForId(servoId);
@@ -141,6 +145,10 @@ class SmartServoManager(MultiProcessing):
 	def SetReadOnly(self, servoId, isReadOnly):
 		no = self.__getNumberForId(servoId);
 		self._isReadOnly[no]= isReadOnly;
+		if (isReadOnly==True):
+			self._servos.SetServoPower(servoId, False)
+		else:
+			self._servos.SetServoPower(servoId, True)
 
 	def SetMaxStepsPerUpdate(self, servoId, maxSteps):
 		no = self.__getNumberForId(servoId);
@@ -163,13 +171,14 @@ class SmartServoManager(MultiProcessing):
 				
 			id = self._servoIds[i]
 			
-			if (self._masterIds[i] !=  id):
-				continue # is a slave servo
-				
 			if (self._isReadOnly[i] == True):
+				#print("read " + str(id))
 				value = self._servos.ReadPos(id)
 				self.__values.set_value(i, value);
 				continue # is a readOnly Servo used as input
+
+			if (self._masterIds[i] !=  id):
+				continue # is a slave servo
 
 			if (False and self._nextServoToReadPos == i):
 			#if (id == 13 or id == 12):
@@ -350,39 +359,31 @@ def bigTest():
 	print("done");
 	
 def TestSlave():
-	ended = False;
-	
 	servos = LX16AServos();
 	tester = SmartServoManager(lX16AServos=servos,ramp=0, maxSpeed=1);
 	tester.AddMasterServo(servoId=5);
 	tester.AddSlaveServo(servoId=6, masterServoId=5, reverseToMaster=-1);
 	tester.Start();
 
-	plus = 100;
+	plus = 300;
 
 	while(True):
 		plus = - plus;
 		tester.MoveServo(5,500+plus);
-		#tester.MoveServo(6,500-plus);
 		while (tester.allTargetsReached == False):
 			time.sleep(0.1);
 
 def TestReadOnly():
-	ended = False;
 	servos = LX16AServos();
-	tester = SmartServoManager(lX16AServos=servos, servoIds= [5,6],ramp=0, maxSpeed=10);
-	
+	tester = SmartServoManager(lX16AServos=servos);
+	tester.AddMasterServo(servoId=5);
 	tester.SetReadOnly(servoId=5,isReadOnly=True)
 	tester.Start();
-
 	while(True):
 		value = tester.ReadServo(5);
-		tester.MoveServo(6,value);
-		while (tester.allTargetsReached == False):
-			time.sleep(0.001);
-
+		print(value)
 
 if __name__ == "__main__":
-	TestSlave()
-	#TestReadOnly()
+	#TestSlave()
+	TestReadOnly()
 	#bigTest();

@@ -211,7 +211,7 @@ class LX16AServos():
 						else:
 							print("Servo " + str(id) + " value loss!");
 			retry+=1
-			sleep(0.00001)
+			sleep(0.0001)
 		if (showError == True):
 			print("Servo " + str(id) + " not responding!");
 		return -1;
