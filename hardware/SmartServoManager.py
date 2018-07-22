@@ -48,19 +48,20 @@ class SmartServoManager(MultiProcessing):
 	_lastUpdateTime	= time.time()
 	_actualSpeedDelay = .006
 
-	servoCount 			= 0;
-	_servos 			= None;
+	_maxServos			= 0
+	servoCount 			= 0
+	_servos 			= None
 	
-	_servoIds					= [];
-	_masterIds					= [];
-	_reverseToMaster			= [];
-	_centeredValues				= [];
-	_isReadOnly					= [];
-	_servoMaxStepsPerUpdate		= [];
-	_servoRamp					= [];
+	_servoIds					= []
+	_masterIds					= []
+	_reverseToMaster			= []
+	_centeredValues				= []
+	_isReadOnly					= []
+	_servoMaxStepsPerUpdate		= []
+	_servoRamp					= []
 	
-	__targets					= None; 
-	__values					= None; 
+	__targets					= None
+	__values					= None 
 	
 	__shared_ints__		= None
 	
@@ -68,32 +69,23 @@ class SmartServoManager(MultiProcessing):
 	
 	_released = False;
 
-	def __init__(self, lX16AServos, servoIds, ramp=0, maxSpeed=1):
+	def __init__(self, lX16AServos, maxServos=255, ramp=0, maxSpeed=1):
 		
 		super().__init__(prio=-20)
 		
-		self.servoCount 				= len(servoIds);
-		self._servoIds 					= servoIds;
+		self._ramp = ramp;
+		self._maxStepsPerSpeedDelay = maxSpeed;
 		
 		# fill other arrays
 		self._masterIds					= [];
 		self._centeredValues			= [];
 		self._reverseToMaster			= [];
-		for i in range(self.servoCount):
-			self._masterIds.append(servoIds[i]);
-			self._centeredValues.append(500);		# standard value: 500
-			self._isReadOnly.append(False);			# standard: False = active Servo (True: Servo is used as input device)
-			self._reverseToMaster.append(1);		# standard: 1 = not reverse (-1 would be reverse)
-			
-		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=self.servoCount);
-		self._servoRamp 				= SharedInts(max_length=self.servoCount);
+		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=maxServos);
+		self._servoRamp 				= SharedInts(max_length=maxServos);
 		self._servos 					= lX16AServos;
-		self.__targets					= SharedInts(max_length=self.servoCount);
-		self.__values					= SharedInts(max_length=self.servoCount);
+		self.__targets					= SharedInts(max_length=maxServos);
+		self.__values					= SharedInts(max_length=maxServos);
 		
-		self._ramp = ramp;
-		self._maxStepsPerSpeedDelay = maxSpeed;
-
 		self.__shared_ints__			= SharedInts(max_length=3)
 		self.__targets_reached_int__	= self.__shared_ints__.get_next_key()
 		
@@ -112,15 +104,31 @@ class SmartServoManager(MultiProcessing):
 	def Start(self):
 		# initial read of servo positions
 		for pos in range(0, self.servoCount):
-			id = self._servoIds[pos];
-			self._servoMaxStepsPerUpdate.set_value(pos,self._maxStepsPerSpeedDelay);
-			self._servoRamp.set_value(pos,self._ramp);
-			value = self._servos.ReadPos(id);
-			self.__values.set_value(pos, value);
-			self.__targets.set_value(pos, value);
-			#print(self.__values.get_value(pos));
+			id = self._servoIds[pos]
+			value = self._servos.ReadPos(id)
+			self.__values.set_value(pos, value)
+			self.__targets.set_value(pos, value)
 		super().StartUpdating()
 		
+	def AddMasterServo(self, servoId):
+		self.___addServo(servoId)
+		self._masterIds.append(servoId)
+
+	def AddSlaveServo(self, servoId, masterServoId, reverseToMaster=1):
+		self.___addServo(servoId)
+		self._masterIds.append(masterServoId)
+		self._reverseToMaster[self.servoCount-1] = reverseToMaster
+
+	def ___addServo(self, servoId):
+		self.servoCount = self.servoCount+1
+		no = self.servoCount-1
+		self._servoIds.append(servoId);
+		self._servoMaxStepsPerUpdate.set_value(no,self._maxStepsPerSpeedDelay); # default value from init
+		self._servoRamp.set_value(no,self._ramp);	# default value from init
+		self._centeredValues.append(500);			# standard value: 500
+		self._isReadOnly.append(False);				# standard: False = active Servo (True: Servo is used as input device)
+		self._reverseToMaster.append(1);			# standard: 1 = not reverse (-1 would be reverse)
+
 	def SetMasterId(self, servoId, masterServoId, reverseToMaster):
 		no = self.__getNumberForId(servoId);
 		self._masterIds[no]= masterServoId;
@@ -343,19 +351,19 @@ def bigTest():
 	
 def TestSlave():
 	ended = False;
+	
 	servos = LX16AServos();
-	tester = SmartServoManager(lX16AServos=servos, servoIds= [5,6],ramp=0, maxSpeed=1);
-	
-	tester.SetMasterId(servoId=5, masterServoId=6, reverseToMaster=-1);
-	
+	tester = SmartServoManager(lX16AServos=servos,ramp=0, maxSpeed=1);
+	tester.AddMasterServo(servoId=5);
+	tester.AddSlaveServo(servoId=6, masterServoId=5, reverseToMaster=-1);
 	tester.Start();
 
 	plus = 100;
 
 	while(True):
 		plus = - plus;
-		tester.MoveServo(6,500+plus);
-		# tester.MoveServo(6,500-plus);
+		tester.MoveServo(5,500+plus);
+		#tester.MoveServo(6,500-plus);
 		while (tester.allTargetsReached == False):
 			time.sleep(0.1);
 
@@ -375,6 +383,6 @@ def TestReadOnly():
 
 
 if __name__ == "__main__":
-	#TestSlave()
-	TestReadOnly()
+	TestSlave()
+	#TestReadOnly()
 	#bigTest();
