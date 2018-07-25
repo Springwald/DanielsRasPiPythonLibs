@@ -32,6 +32,8 @@ import time, sys, os
 
 import atexit
 
+clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
+
 my_file = os.path.abspath(__file__)
 my_path ='/'.join(my_file.split('/')[0:-1])
 
@@ -141,6 +143,10 @@ class SmartServoManager(MultiProcessing):
 	def SetCenteredValue(self, servoId, centeredValue):
 		no = self.__getNumberForId(servoId);
 		self._centeredValues[no]= centeredValue;
+		
+	def GetCenteredValue(self, servoId):
+		no = self.__getNumberForId(servoId)
+		return self._centeredValues[no]
 		
 	def SetReadOnly(self, servoId, isReadOnly):
 		no = self.__getNumberForId(servoId);
@@ -278,6 +284,38 @@ class SmartServoManager(MultiProcessing):
 			id = positions[p][0]
 			value = positions[p][1]
 			self.MoveServo(id, value)
+			
+	def PrintReadOnlyServoValues(self, onlyMasterServos=True):
+		import pyperclip
+		out = ""
+		firstCode= True
+		code = "_gesture 	= ["
+		# print all readonly servos
+		for a in range(0, self.servoCount):
+			id = self._servoIds[a]
+			if (self._isReadOnly[a]==True):
+				p = self.ReadServo(id)
+				if (p != -1):
+					out = out  + str(id) + ": " + str(p) + "\r\n"
+					if (self._masterIds[a] == id):
+						if (firstCode==True or onlyMasterServos==False):
+							firstCode = False
+						else:
+							code = code + ","
+						code = code + "[" + str(id) + "," + str(p) +"]"
+
+		# print only the master servos in in copy format
+		code = code + "]"
+		out = out + "\r\n" + code 
+		
+		## push to screen
+		clear()
+		print(out)
+		
+		## copy to clipboard
+		pyperclip.copy(code)
+		#spam = pyperclip.paste()
+
 
 	def Release(self):
 		if (self._released == False):
