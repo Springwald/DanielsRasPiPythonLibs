@@ -48,7 +48,7 @@ from LX16AServos import LX16AServos
 class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
-	_actualSpeedDelay = .006
+	_actualSpeedDelay = .003
 
 	_maxServos			= 0
 	servoCount 			= 0
@@ -71,6 +71,8 @@ class SmartServoManager(MultiProcessing):
 	_started = False;
 	
 	_released = False;
+	
+	__lastReadNo = 0
 
 	def __init__(self, lX16AServos, maxServos=255, ramp=0, maxSpeed=1):
 		
@@ -169,6 +171,10 @@ class SmartServoManager(MultiProcessing):
 		if (timeDiff < self._actualSpeedDelay):
 			time.sleep(self._actualSpeedDelay - timeDiff)
 		allReached = True
+		
+		self.__lastReadNo = self.__lastReadNo-1
+		if (self.__lastReadNo == -1):
+			self.__lastReadNo = self.servoCount
 
 		for i in range(0, self.servoCount):
 			
@@ -178,9 +184,9 @@ class SmartServoManager(MultiProcessing):
 			id = self._servoIds[i]
 			
 			if (self._isReadOnly[i] == True):
-				#print("read " + str(id))
-				value = self._servos.ReadPos(id)
-				self.__values.set_value(i, value);
+				if (self.__lastReadNo == i):
+					value = self._servos.ReadPos(id) # only read a single servo per update because of performance
+					self.__values.set_value(i, value);
 				continue # is a readOnly Servo used as input
 
 			if (self._masterIds[i] !=  id):
