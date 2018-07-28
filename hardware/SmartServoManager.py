@@ -48,7 +48,7 @@ from LX16AServos import LX16AServos
 class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
-	_actualSpeedDelay = .003
+	_actualSpeedDelay = .002
 
 	_maxServos			= 0
 	servoCount 			= 0
@@ -66,9 +66,12 @@ class SmartServoManager(MultiProcessing):
 	__values					= None 
 	
 	__shared_ints__		= None
-	
+		
 	_nextServoToReadPos = 0;
-	_started = False;
+	_started 	= False
+	__startTime 	= None
+	__fpsCount	= 0
+	__fpsShow	= 0
 	
 	_released = False;
 	
@@ -116,7 +119,10 @@ class SmartServoManager(MultiProcessing):
 
 		if (self._started==False):
 			self._started=True;
+			self.__startTime = time.time()
+			self.__fpsCount = 0
 			super().StartUpdating()
+
 		
 	def AddMasterServo(self, servoId, centeredValue=500):
 		self.___addServo(servoId, centeredValue=centeredValue)
@@ -175,6 +181,14 @@ class SmartServoManager(MultiProcessing):
 		self.__lastReadNo = self.__lastReadNo-1
 		if (self.__lastReadNo == -1):
 			self.__lastReadNo = self.servoCount
+			
+		if (False): # calc fps
+			self.__fpsCount = self.__fpsCount + 1
+			self.__fpsShow = self.__fpsShow + 1
+			if (self.__fpsShow == 100):
+				self.__fpsShow = 0
+				delta = time.time() - self.__startTime
+				print(self.__fpsCount / delta)
 
 		for i in range(0, self.servoCount):
 			
@@ -323,6 +337,9 @@ class SmartServoManager(MultiProcessing):
 		#spam = pyperclip.paste()
 
 
+
+			
+
 	def Release(self):
 		if (self._released == False):
 			print("releasing " + self._processName)
@@ -338,6 +355,20 @@ class SmartServoManager(MultiProcessing):
 
 def exit_handler():
 	tester.Release()
+	
+def TestReadSpeed():
+	servos = LX16AServos()
+	tester = SmartServoManager(lX16AServos=servos)
+	tester.AddMasterServo(servoId=1)
+	tester.SetReadOnly(servoId=1,isReadOnly=True)
+	tester.AddMasterServo(servoId=2)
+	tester.SetReadOnly(servoId=2,isReadOnly=True)
+	tester.AddMasterServo(servoId=3)
+	tester.SetReadOnly(servoId=3,isReadOnly=True)
+	tester.Start()
+	while(True):
+		value = tester.ReadServo(1)
+
 	
 def bigTest():
 	ended = False;
@@ -429,5 +460,6 @@ def TestReadOnly():
 
 if __name__ == "__main__":
 	#TestSlave()
-	TestReadOnly()
+	#TestReadOnly()
+	TestReadSpeed();
 	#bigTest();

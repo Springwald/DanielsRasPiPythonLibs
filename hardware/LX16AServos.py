@@ -190,7 +190,7 @@ class LX16AServos():
 		self.SerialPort.write(command)
 		self.SerialPort.write(bytes([self.checksum(id, command)]))
 		
-		#sleep(0.001)
+		sleep(0.001)
 		
 		retry=0
 		while retry<100:
@@ -205,13 +205,13 @@ class LX16AServos():
 							pos2 =  pos1 + 256*pos2 
 							return pos2
 						if (self.SerialPort.inWaiting() == 0):
-							sleep(0.01)
+							sleep(0.001)
 						if (self.SerialPort.inWaiting() > 0):
 							value=self.SerialPort.read(1)
 						else:
 							print("Servo " + str(id) + " value loss!");
 			retry+=1
-			sleep(0.0001)
+			sleep(0.00001)
 		if (showError == True):
 			print("Servo " + str(id) + " not responding!");
 		return -1;
