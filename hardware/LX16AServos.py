@@ -46,7 +46,7 @@ class LX16AServos():
 	CMD_POS_READ_BYTE  = 28
 	CMD_LOAD_OR_UNLOAD_WRITE = 31
 
-	TX_DELAY_TIME = 0.00002
+	TX_DELAY_TIME = 0.0002
 	
 	def __init__(self):
 		self.SerialPort = Serial("/dev/ttyUSB0", baudrate=115200)
@@ -205,13 +205,13 @@ class LX16AServos():
 							pos2 =  pos1 + 256*pos2 
 							return pos2
 						if (self.SerialPort.inWaiting() == 0):
-							sleep(0.001)
+							sleep(0.01)
 						if (self.SerialPort.inWaiting() > 0):
 							value=self.SerialPort.read(1)
 						else:
 							print("Servo " + str(id) + " value loss!");
 			retry+=1
-			sleep(0.00001)
+			sleep(0.0001)
 		if (showError == True):
 			print("Servo " + str(id) + " not responding!");
 		return -1;
@@ -248,6 +248,7 @@ if __name__ == "__main__":
 		r = r + 1
 		clear();
 		print(out);
+		sleep(1)
 		
 #		print(str(servos.ReadTemperature(5))+"°C")
 #		print(str(servos.ReadVolt(5))+" mVolt")

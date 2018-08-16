@@ -48,7 +48,7 @@ from LX16AServos import LX16AServos
 class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
-	_actualSpeedDelay = .002
+	_actualSpeedDelay = .001
 
 	_maxServos			= 0
 	servoCount 			= 0
@@ -76,6 +76,7 @@ class SmartServoManager(MultiProcessing):
 	_released = False;
 	
 	__lastReadNo = 0
+	
 
 	def __init__(self, lX16AServos, maxServos=255, ramp=0, maxSpeed=1):
 		
@@ -98,6 +99,8 @@ class SmartServoManager(MultiProcessing):
 		self.__targets_reached_int__	= self.__shared_ints__.get_next_key()
 		
 		self._processName = "SmartServoManager";
+		
+		
 
 	@property
 	def allTargetsReached(self):
@@ -122,7 +125,7 @@ class SmartServoManager(MultiProcessing):
 			self.__startTime = time.time()
 			self.__fpsCount = 0
 			super().StartUpdating()
-
+		
 		
 	def AddMasterServo(self, servoId, centeredValue=500):
 		self.___addServo(servoId, centeredValue=centeredValue)
@@ -213,42 +216,48 @@ class SmartServoManager(MultiProcessing):
 				#print(str(i)+ " " + str(value))
 			else:
 				value = self.__values.get_value(i);
-
-			diff = int(self.__targets.get_value(i) - value) 
-			plus = 0
-			
-			tolerance = 10;
-			
-			if (diff < tolerance and diff > -tolerance):
-				reachedThis = True
-				#if (diff != 0):
-				#	if (super().updating_ended == False):
-				#		l = 1
-						#newValue = int(self.__targets.get_value(i))
-						#self._servos.MoveServo(id, self._ramp, newValue)
-						#self.__values.set_value(i, newValue)
-			else:
-				reachedThis = False;
 				
-			servoMaxStepsPerUpdate = self._servoMaxStepsPerUpdate.get_value(i);
-				
-			diff = max(diff, -servoMaxStepsPerUpdate);
-			diff = min(diff, servoMaxStepsPerUpdate);
-			
-			if (reachedThis == False):
+			if (value == -1):
+				# this servo has an invalid value. do nothing, to prevent damage!
+				reachedThis = False
 				allReached = False
-				newValue = int(value + diff) 
-				if (super().updating_ended == False):
-					self._servos.MoveServo(id, self._servoRamp.get_value(i), newValue);
-					self.__values.set_value(i, newValue)
+			else:
+				
+				diff = int(self.__targets.get_value(i) - value) 
+				plus = 0
+				
+				tolerance = 10;
+				
+				if (diff < tolerance and diff > -tolerance):
+					reachedThis = True
+					#if (diff != 0):
+					#	if (super().updating_ended == False):
+					#		l = 1
+							#newValue = int(self.__targets.get_value(i))
+							#self._servos.MoveServo(id, self._ramp, newValue)
+							#self.__values.set_value(i, newValue)
+				else:
+					reachedThis = False;
 					
-					for no in range(0, self.servoCount):
-						if (no != i):
-							if (self._masterIds[no] == id):
-								slaveId = self._servoIds[no]
-								newValue = (newValue - self._centeredValues[i]) * self._reverseToMaster[no] + self._centeredValues[no] 
-								self._servos.MoveServo(slaveId, self._servoRamp.get_value(i), newValue);
-								self.__values.set_value(no, newValue)
+				servoMaxStepsPerUpdate = self._servoMaxStepsPerUpdate.get_value(i);
+					
+				diff = max(diff, -servoMaxStepsPerUpdate);
+				diff = min(diff, servoMaxStepsPerUpdate);
+				
+				if (reachedThis == False):
+					allReached = False
+					newValue = int(value + diff) 
+					if (super().updating_ended == False):
+						self._servos.MoveServo(id, self._servoRamp.get_value(i), newValue);
+						self.__values.set_value(i, newValue)
+						
+						for no in range(0, self.servoCount):
+							if (no != i):
+								if (self._masterIds[no] == id):
+									slaveId = self._servoIds[no]
+									newValue = (newValue - self._centeredValues[i]) * self._reverseToMaster[no] + self._centeredValues[no] 
+									self._servos.MoveServo(slaveId, self._servoRamp.get_value(i), newValue);
+									self.__values.set_value(no, newValue)
 
 		self._nextServoToReadPos = self._nextServoToReadPos + 1
 		if (self._nextServoToReadPos >= self.servoCount):
@@ -440,7 +449,7 @@ def TestSlave():
 	tester.AddSlaveServo(servoId=6, masterServoId=5, reverseToMaster=-1);
 	tester.Start();
 
-	plus = 300;
+	plus = 100;
 
 	while(True):
 		plus = - plus;
@@ -457,9 +466,10 @@ def TestReadOnly():
 	while(True):
 		value = tester.ReadServo(5);
 		print(value)
+		time.sleep(1)
 
 if __name__ == "__main__":
-	#TestSlave()
+	TestSlave()
 	#TestReadOnly()
-	TestReadSpeed();
+	#TestReadSpeed();
 	#bigTest();
