@@ -48,7 +48,7 @@ from LX16AServos import LX16AServos
 class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
-	_actualSpeedDelay = .001
+	_actualSpeedDelay = .005
 
 	_maxServos			= 0
 	servoCount 			= 0
@@ -114,18 +114,31 @@ class SmartServoManager(MultiProcessing):
 			
 	def Start(self):
 		# initial read of servo positions
-		for pos in range(0, self.servoCount):
-			id = self._servoIds[pos]
-			value = self._servos.ReadPos(id)
-			self.__values.set_value(pos, value)
-			self.__targets.set_value(pos, value)
+		allRead = False
+		tryCount = 0
+		while (allRead == False and tryCount <  10):
+			allRead = True
+			for pos in range(0, self.servoCount):
+				id = self._servoIds[pos]
+				value = self._servos.ReadPos(id, showError= tryCount > 2)
+				if (value == -1):
+					allRead = False
+				else:
+					self.__values.set_value(pos, value)
+					self.__targets.set_value(pos, value)
+					print ("servo " + str(id) + ": " + str(value))
+			if (allRead==False):
+				time.sleep(1)
+				tryCount = tryCount + 1
+				
+		if (allRead == False):
+			raise ValueError('unable to initial read all servo positions')
 
 		if (self._started==False):
 			self._started=True;
 			self.__startTime = time.time()
 			self.__fpsCount = 0
 			super().StartUpdating()
-		
 		
 	def AddMasterServo(self, servoId, centeredValue=500):
 		self.___addServo(servoId, centeredValue=centeredValue)
@@ -338,8 +351,8 @@ class SmartServoManager(MultiProcessing):
 		out = out + "\r\n" + code 
 		
 		## push to screen
-		clear()
-		print(out)
+		#clear()
+		#print(out)
 		
 		## copy to clipboard
 		pyperclip.copy(code)
@@ -469,7 +482,7 @@ def TestReadOnly():
 		time.sleep(1)
 
 if __name__ == "__main__":
-	TestSlave()
-	#TestReadOnly()
+	#TestSlave()
+	TestReadOnly()
 	#TestReadSpeed();
 	#bigTest();
