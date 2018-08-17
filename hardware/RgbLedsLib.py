@@ -32,7 +32,7 @@
 import time
 from neopixel import *
 
-class RgbLeds():
+class RgbLedsLib():
 
 	# LED strip configuration:
 	LED_PIN        		= 18		# GPIO pin connected to the pixels (must support PWM!).
@@ -103,7 +103,7 @@ class RgbLeds():
 
 if __name__ == "__main__":
 
-	leds = RgbLeds(ledCount=29, ledBrightness=100);
+	leds = RgbLedsLib(ledCount=29, ledBrightness=100);
 	leds.colorWipe(Color(255,0,255), countLed=29, wait_ms=100);
 	for i in range(1,100):
 		print(i);
