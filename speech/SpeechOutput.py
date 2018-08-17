@@ -63,7 +63,7 @@ class SpeechOutput():
 
 	def Speak(self, content, wait=True):
 		self.WaitWhileSpeaking(); # Do not speak into previous sentences
-		espeak_process = subprocess.Popen(["espeak", self._voice, "-s140", content, "--stdout"], stdout=subprocess.PIPE) 
+		espeak_process = subprocess.Popen(["espeak", self._voice, "-s130", content, "--stdout"], stdout=subprocess.PIPE) 
 		#espeak_process = subprocess.Popen(["espeak", "-s140", content, "--stdout"], stdout=subprocess.PIPE) 
 		self._aplay_process = subprocess.Popen(["aplay", "-D", self._soundcard], stdin=espeak_process.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 		if (wait==True):
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 		
 	pygame.init()
 	
-	speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de2"); 
+	speechOut = SpeechOutput(soundcard="plughw:1", voice="-vmb-de6"); 
 	#speechOut = SpeechOutput(soundcard="plughw:1", voice="-ven"); 
 	
 	atexit.register(exit_handler)
@@ -97,8 +97,8 @@ if __name__ == "__main__":
 	speechOut.Speak("Hallo", wait=True)
 	#time.sleep(3);
 	speechOut.Speak("Mein Name ist Roobert.", wait=True);
-	#speechOut.Speak("Ich habe eine Spielstärke von etwa 5 kyu.", wait=True)
-	#speechOut.Speak("Hui")
+	speechOut.Speak("Ich habe eine Spielstärke von etwa 5 kyu.", wait=True)
+	speechOut.Speak("Hui")
 	
 	#start_new_thread(speechOut.UpdateEndless(),())
 	
