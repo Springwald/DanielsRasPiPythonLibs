@@ -355,8 +355,8 @@ class SmartServoManager(MultiProcessing):
 		out = out + "\r\n" + code 
 		
 		## push to screen
-		#clear()
-		#print(out)
+		clear()
+		print(out)
 		
 		## copy to clipboard
 		pyperclip.copy(code)
