@@ -48,7 +48,8 @@ from LX16AServos import LX16AServos
 class SmartServoManager(MultiProcessing):
 	
 	_lastUpdateTime	= time.time()
-	_actualSpeedDelay = .005
+	_actualSpeedDelay = .001
+	_readServosWhileRunning = True
 
 	_maxServos			= 0
 	servoCount 			= 0
@@ -78,22 +79,23 @@ class SmartServoManager(MultiProcessing):
 	__lastReadNo = 0
 	
 
-	def __init__(self, lX16AServos, maxServos=255, ramp=0, maxSpeed=1):
+	def __init__(self, lX16AServos, maxServos=255, ramp=0, maxSpeed=1, readServosWhileRunning = False):
 		
 		super().__init__(prio=-20)
 		
-		self._ramp = ramp;
-		self._maxStepsPerSpeedDelay = maxSpeed;
+		self._ramp = ramp
+		self._maxStepsPerSpeedDelay = maxSpeed
+		self._readServosWhileRunning = readServosWhileRunning
 		
 		# fill other arrays
-		self._masterIds					= [];
-		self._centeredValues			= [];
-		self._reverseToMaster			= [];
-		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=maxServos);
-		self._servoRamp 				= SharedInts(max_length=maxServos);
-		self._servos 					= lX16AServos;
-		self.__targets					= SharedInts(max_length=maxServos);
-		self.__values					= SharedInts(max_length=maxServos);
+		self._masterIds					= []
+		self._centeredValues			= []
+		self._reverseToMaster			= []
+		self._servoMaxStepsPerUpdate 	= SharedInts(max_length=maxServos)
+		self._servoRamp 				= SharedInts(max_length=maxServos)
+		self._servos 					= lX16AServos
+		self.__targets					= SharedInts(max_length=maxServos)
+		self.__values					= SharedInts(max_length=maxServos)
 		
 		self.__shared_ints__			= SharedInts(max_length=3)
 		self.__targets_reached_int__	= self.__shared_ints__.get_next_key()
@@ -213,7 +215,7 @@ class SmartServoManager(MultiProcessing):
 				
 			id = self._servoIds[i]
 			
-			if (self._isReadOnly[i] == True):
+			if (self._isReadOnly[i] == True ):
 				if (self.__lastReadNo == i):
 					value = self._servos.ReadPos(id) # only read a single servo per update because of performance
 					self.__values.set_value(i, value);
@@ -222,10 +224,12 @@ class SmartServoManager(MultiProcessing):
 			if (self._masterIds[i] !=  id):
 				continue # is a slave servo
 
-			if (False and self._nextServoToReadPos == i):
+			if (self._readServosWhileRunning == True and self._nextServoToReadPos == i):
 			#if (id == 13 or id == 12):
-				value = self._servos.ReadPos(id)
-				self.__values.set_value(i, value);
+				getValue = self._servos.ReadPos(id)
+				if (getValue != -1):
+					value = getValue
+					self.__values.set_value(i, value);
 				#print(str(i)+ " " + str(value))
 			else:
 				value = self.__values.get_value(i);
