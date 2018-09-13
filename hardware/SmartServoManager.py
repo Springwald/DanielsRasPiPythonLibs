@@ -59,7 +59,6 @@ class SmartServoManager(MultiProcessing):
 	_masterIds					= []
 	_reverseToMaster			= []
 	_centeredValues				= []
-	_isReadOnly					= []
 	_servoMaxStepsPerUpdate		= []
 	_servoRamp					= []
 	
@@ -96,12 +95,12 @@ class SmartServoManager(MultiProcessing):
 		self._servos 					= lX16AServos
 		self.__targets					= SharedInts(max_length=maxServos)
 		self.__values					= SharedInts(max_length=maxServos)
+		self.__isReadonly					= SharedInts(max_length=maxServos)
 		
 		self.__shared_ints__			= SharedInts(max_length=3)
 		self.__targets_reached_int__	= self.__shared_ints__.get_next_key()
 		
 		self._processName = "SmartServoManager";
-		
 		
 
 	@property
@@ -113,6 +112,18 @@ class SmartServoManager(MultiProcessing):
 			self.__shared_ints__.set_value(self.__targets_reached_int__,1)
 		else:
 			self.__shared_ints__.set_value(self.__targets_reached_int__,0)
+			
+	def GetIsReadOnly(self, servoId):
+		return self.__isReadonly.get_value(servoId)== 1
+	def SetIsReadOnly(self, servoId, isReadOnly):
+		no = self.__getNumberForId(servoId);
+		if (isReadOnly==True):
+			self._servos.SetServoPower(servoId, False)
+			self.__isReadonly.set_value(no,1)
+		else:
+			self._servos.SetServoPower(servoId, True)
+			self.__isReadonly.set_value(no,0)
+
 			
 	def Start(self):
 		# initial read of servo positions
@@ -158,7 +169,7 @@ class SmartServoManager(MultiProcessing):
 		self._servoMaxStepsPerUpdate.set_value(no,self._maxStepsPerSpeedDelay); # default value from init
 		self._servoRamp.set_value(no,self._ramp);	# default value from init
 		self._centeredValues.append(centeredValue);	# standard value: 500
-		self._isReadOnly.append(False);				# standard: False = active Servo (True: Servo is used as input device)
+		self.SetIsReadOnly(servoId, False)			# standard: False = active Servo (True: Servo is used as input device)
 		self._reverseToMaster.append(1);			# standard: 1 = not reverse (-1 would be reverse)
 
 	#def SetMasterId(self, servoId, masterServoId, reverseToMaster):
@@ -173,14 +184,6 @@ class SmartServoManager(MultiProcessing):
 	def GetCenteredValue(self, servoId):
 		no = self.__getNumberForId(servoId)
 		return self._centeredValues[no]
-		
-	def SetReadOnly(self, servoId, isReadOnly):
-		no = self.__getNumberForId(servoId);
-		self._isReadOnly[no]= isReadOnly;
-		if (isReadOnly==True):
-			self._servos.SetServoPower(servoId, False)
-		else:
-			self._servos.SetServoPower(servoId, True)
 
 	def SetMaxStepsPerUpdate(self, servoId, maxSteps):
 		no = self.__getNumberForId(servoId);
@@ -215,10 +218,11 @@ class SmartServoManager(MultiProcessing):
 				
 			id = self._servoIds[i]
 			
-			if (self._isReadOnly[i] == True ):
+			if (self.GetIsReadOnly(i) == True ):
 				if (self.__lastReadNo == i):
 					value = self._servos.ReadPos(id) # only read a single servo per update because of performance
 					self.__values.set_value(i, value);
+				#print(str(id) + " is readonly")
 				continue # is a readOnly Servo used as input
 
 			if (self._masterIds[i] !=  id):
@@ -339,7 +343,7 @@ class SmartServoManager(MultiProcessing):
 		# print all readonly servos
 		for a in range(0, self.servoCount):
 			id = self._servoIds[a]
-			if (self._isReadOnly[a]==True):
+			if (self.GetIsReadOnly[a]==True):
 				p = self.ReadServo(id)
 				if (p != -1):
 					out = out  + str(id) + ": " + str(p) + "\r\n"
